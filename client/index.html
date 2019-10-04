@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head>
+<title>WebStan</title>
+<link rel="stylesheet" href="./client.css"/>
+<script src="https://cdn.rawgit.com/dcodeIO/protobuf.js/6.8.8/dist/protobuf.min.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script type="module">
+import './common.js';
+import './visual.js';
+import './fits.js';
+import './models.js';
+import setup from "./main.js";
+setup(
+  new URL('../v1/', document.location),
+  d3.select('#contentbox')
+);
+</script>
+</head><body>
+<h1>WebStan</h1>
+<p>
+Run Stan models in your web browser.
+</p>
+<div id="contentbox">
+Not connected...
+</div>
+</body></html>
