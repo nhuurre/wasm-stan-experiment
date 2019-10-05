@@ -1,0 +1,6 @@
+{
+  "list_models": true,
+  "compile": false,
+  "wasm": true,
+  "fit": false
+}
