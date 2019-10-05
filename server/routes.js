@@ -4,6 +4,7 @@ const { dirname, join } = require('path');
 
 let cache;
 let fits;
+let compiler;
 
 const server_settings = {};
 
@@ -12,7 +13,15 @@ async function setup() {
   await cache.setup();
   server_settings.list_models = true;
   server_settings.wasm = true;
-  server_settings.compile = false;
+  try {
+    compiler = require('./compiler.js');
+    await compiler.setup();
+    server_settings.compile = true;
+  } catch (err) {
+    server_settings.compile = false;
+    console.warn('Model compilation not possible due to following error');
+    console.warn(err);
+  }
   try {
     fits = require('./fits.js');
     server_settings.fit = true;
@@ -39,6 +48,22 @@ function handle_health(request, response) {
 function handle_list_models(request, response) {
   const list = cache.list_models();
   response.json(list);
+}
+
+async function handle_compile_model(request, response) {
+  const body = request.body;
+  const { program_code } = body;
+  try {
+    const model = await compiler.compile_model(program_code);
+    response.status(201);
+    response.json({
+      name: model.name,
+      compiler_output: model.compiler_output
+    });
+  } catch (err) {
+    console.log(err);
+    send_error(response, 400, err.message);
+  }
 }
 
 async function handle_params(request, response) {
@@ -144,6 +169,8 @@ async function install(app) {
   app.get('/v1/health', handle_health);
   if (server_settings.list_models)
     app.get('/v1/list-models', handle_list_models);
+  if (server_settings.compile)
+    app.post('/v1/models', express.json(), express.urlencoded({extended: true}), handle_compile_model);
   if (server_settings.fit) {
     app.post(/\/v1\/models\/([0-9a-f]+)\/params/, express.json(), express.urlencoded({extended: true}), handle_params);
     app.post(/\/v1\/models\/([0-9a-f]+)\/fits/, express.json(), express.urlencoded({extended: true}), handle_create_fit);
