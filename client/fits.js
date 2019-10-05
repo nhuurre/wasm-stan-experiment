@@ -6,10 +6,24 @@ async function create_fit(elt, model, settings) {
   const div = elt.append('div');
   const get_data = data_input(div);
   const get_options = await options(div);
+  const client_fit = div.append('button').text('Fit locally');
   const server_fit = div.append('button').text('Fit on server');
   elt.append('h3').text('Fits');
   const new_item = make_list(elt);
-  elt.append('div');
+  if (!settings.wasm) {
+    client_fit.attr('title', 'The server does not provide WebAssembly.');
+    client_fit.node().disabled = true;
+  } else {
+    client_fit.attr('title', 'Create a new fit in a WebWorker.');
+    client_fit.node().onclick = async() => {
+      const data = await get_data();
+      if (!data)
+        return;
+      const options = get_options();
+      const item = new_item();
+      workertask(item, model, data, options, settings);
+    };
+  }
   if (!settings.fit) {
     server_fit.attr('title','The server does not support making new fits.');
     server_fit.node().disabled = true;
@@ -50,6 +64,65 @@ async function create_fit(elt, model, settings) {
         fitview(item);
       }
     };
+  }
+}
+
+export
+async function workertask(elt, model, data, options, settings) {
+  elt.append('div')
+     .classed('delbox', true)
+     .text('X')
+     .attr('title', 'delete fit')
+     .node()
+     .onclick = ()=>void elt.remove();
+  const monitor = task_monitor(elt);
+  const fitview = await monitor(async() => {
+    const worker = new Worker(new URL(`${model.name}/model.js`, settings.url));
+    try {
+      return await new Promise((resolve, reject) => {
+      let draws;
+      worker.onerror = (event) => {
+        reject(new Error(event.message));
+      };
+      worker.onmessage = (event) => {
+        switch (event.data.info) {
+        case 'ready':
+          worker.postMessage({
+            cmd: 'get_params',
+            data: data,
+            random_seed: options.random_seed
+          });
+          break;
+        case 'params':
+          draws = fit_data(event.data.params, monitor.update);
+          worker.postMessage({
+            cmd: 'hmc_nuts_diag_e_adapt',
+            data: data,
+            args: options
+          });
+          break;
+        case 'params-err':
+          reject(new Error(event.data.msg));
+          break;
+        case 'hmc_nuts-msg':
+          draws(event.data.msg);
+          break;
+        case 'hmc_nuts-done':
+          resolve(draws.view);
+          break;
+        case 'debug':
+          console.log(event.data.msg);
+          break;
+        }
+      };
+    });
+  } finally {
+    setTimeout(()=>void worker.terminate(), 0);
+  }
+  }, true);
+  if (fitview) {
+    monitor.remove();
+    fitview(elt);
   }
 }
 
