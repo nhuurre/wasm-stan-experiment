@@ -160,3 +160,57 @@ async function start_worker(model, fit, data, options, operation) {
   });
 }
 
+exports.run_worker = run_worker;
+function run_worker(model, data, options) {
+  return new Promise((resolve, reject) => {
+    const samples = {};
+    const thread = new workers.Worker(cache.file('models', model.id, 'model.js'));
+    thread.on('error', (err) => reject(new Error(err)));
+    thread.on('message', (message) => {
+      const { info, msg } = message;
+      switch (info) {
+      case 'ready':
+        thread.postMessage({
+          cmd: 'hmc_nuts_diag_e_adapt',
+          data: data,
+          args: {
+            ...sampler_default_args,
+            ...options
+          }
+        });
+        break;
+      case 'hmc_nuts-msg':
+        switch (msg.topic) {
+        case 1: // LOGGER
+          for (let f of msg.feature)
+            for (let s of f.stringList.value)
+              console.log(s);
+          break;
+        case 2: // INITIALIZE
+          break;
+        case 3: // SAMPLE
+          for (let f of msg.feature) if (f.name) {
+            if (!(f.name in samples))
+              samples[f.name] = [];
+            samples[f.name].push(f.doubleList.value[0]);
+          }
+          break;
+        case 4: // DIAGNOSE
+          break;
+        }
+        break;
+      case 'hmc_nuts-done':
+        setTimeout(() => {
+          thread.terminate();
+          resolve(samples);
+        }, 10);
+        break;
+      case 'debug':
+        console.log(msg.msg);
+        break;
+      }
+    });
+  });
+}
+
+
