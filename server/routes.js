@@ -165,7 +165,7 @@ async function install(app) {
   await setup();
   const express = require('express');
   app.get('/write_all', async(_, res) => {await cache.write_models(); res.send('Cache updated.');});
-  app.use('/static', express.static(join(dirname(__dirname), 'client')));
+  app.use('/client', express.static(join(dirname(__dirname), 'client')));
   app.get('/v1/health', handle_health);
   if (server_settings.list_models)
     app.get('/v1/list-models', handle_list_models);

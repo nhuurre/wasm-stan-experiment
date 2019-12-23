@@ -1,5 +1,6 @@
 import os.path
 from subprocess import Popen, DEVNULL
+import contextlib
 
 assert 'CMDSTAN_PATH' in os.environ, 'CmdStan needed, please set $CMDSTAN_PATH'
 try:
@@ -22,22 +23,22 @@ class model_name:
       return other.startswith('models/')
     return NotImplemented
 
-class Server:
-  host = 'localhost'
-  port = 8080
-  def start(self):
-    pass
-  def stop(self):
-    pass
+host, port = 'localhost', 8080
 
-import httpstan.main
 import httpstan.models
 httpstan.models.calculate_model_name = model_name
-httpstan.main.Server = Server
 
 import sys
 sys.path.insert(0, '.')
 
+# monkeypatch pystan-next backend
+import stan.common
+@contextlib.contextmanager
+def httpstan_server():
+  yield stan.common.ServerAddress(host=host, port=port)
+stan.common.httpstan_server = httpstan_server
+
+# start node server
 nodedir = os.path.dirname(__file__)
 nodejsserver = os.path.join(nodedir, 'server', 'main.js')
 server_cmd = ['node', '--experimental-worker', nodejsserver]

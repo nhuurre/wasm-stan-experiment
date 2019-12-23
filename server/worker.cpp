@@ -3,7 +3,7 @@
 #include <stan/callbacks/interrupt.hpp>
 #include <stan/callbacks/logger.hpp>
 #include <stan/callbacks/writer.hpp>
-#include <stan/io/json/json_data.hpp>
+#include <cmdstan/io/json/json_data.hpp>
 #include <stan/io/empty_var_context.hpp>
 #include <stan/model/model_base.hpp>
 #include <stan/services/sample/fixed_param.hpp>
@@ -137,7 +137,7 @@ void convert_to_json(std::fstream& stream, std::vector<T>& vectr) {
 extern "C" int EMSCRIPTEN_KEEPALIVE get_params(int random_seed) {
   try {
     std::fstream datastream("/data/data.json", std::fstream::in);
-    stan::json::json_data data_context(datastream);
+    cmdstan::json::json_data data_context(datastream);
     datastream.close();
     std::fstream paramstream("/params.json", std::fstream::out);
     stan_model model(data_context, random_seed);
@@ -183,7 +183,7 @@ extern "C" int EMSCRIPTEN_KEEPALIVE hmc_nuts_diag_e_adapt_sample(
       msg << "Can't open specified file, \"/data/data.json\"" << std::endl;
       throw std::invalid_argument(msg.str());
     }
-    stan::json::json_data data_context(stream);
+    cmdstan::json::json_data data_context(stream);
     stream.close();
 
     stan::model::model_base& model = new_model(data_context, random_seed, &std::cout);

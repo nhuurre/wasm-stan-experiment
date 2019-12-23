@@ -21,7 +21,7 @@ function setup() {
   fs.readFile(join(cache_dir, 'list-models'), {encoding: 'utf8'},
     (err, data) => {
       if (err)
-        reject(new Error(err));
+        reject(err);
       else try {
         data = JSON.parse(data);
         for (let model of data)
@@ -44,7 +44,7 @@ function write_models() {
   return new Promise((resolve, reject) => {
   fs.writeFile(join(cache_dir, 'list-models'),
     JSON.stringify(list_models()),
-    (err) => err ? reject(new Error(err)) : resolve()
+    (err) => err ? reject(err) : resolve()
     );
   });
 }

@@ -78,10 +78,7 @@ exports.get_params = get_params;
 function get_params(model, data, random_seed) {
   return new Promise((resolve, reject) => {
     const thread = new workers.Worker(cache.file('models', model.id, 'model.js'));
-    thread.on('error', (err) => {
-      reject(new Error(err));
-      setTimeout(()=>void thread.terminate(), 0);
-    });
+    thread.on('error', reject);
     thread.on('message', (msg) => {
       switch (msg.info) {
       case 'ready':
@@ -165,7 +162,7 @@ function run_worker(model, data, options) {
   return new Promise((resolve, reject) => {
     const samples = {};
     const thread = new workers.Worker(cache.file('models', model.id, 'model.js'));
-    thread.on('error', (err) => reject(new Error(err)));
+    thread.on('error', reject);
     thread.on('message', (message) => {
       const { info, msg } = message;
       switch (info) {

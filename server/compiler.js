@@ -20,21 +20,25 @@ const stanc_exe = join(cmdstan_dir, 'bin', 'stanc');
 const emcc_exe = "em++";
 
 const stan_macros = [
+  '-D', '_REENTRANT',
   '-D', 'BOOST_DISABLE_ASSERTS',
   '-D', 'BOOST_PHOENIX_NO_VARIADIC_EXPRESSION'
 ];
 
 const stan_math = join(cmdstan_dir, 'stan', 'lib', 'stan_math');
 const stan_libs = [
+  '-I', join(__dirname, 'shim'),
+  '-I', join(cmdstan_dir, 'src'),
+  '-I', join(cmdstan_dir, 'lib', 'rapidjson_1.1.0'),
   '-I', join(cmdstan_dir, 'stan', 'src'),
   '-I', stan_math,
   '-I', join(stan_math, 'lib', 'eigen_3.3.3'),
   '-I', join(stan_math, 'lib', 'boost_1.69.0'),
-  '-I', join(stan_math, 'lib', 'sundials_4.1.0/include')
+  '-I', join(stan_math, 'lib', 'sundials_4.1.0', 'include')
 ];
 
 const version = {
-  server: 'nodejs-stan 0.1'
+  server: 'nodejs-stan 0.2'
 };
 exports.setup = setup;
 async function setup() {
@@ -72,7 +76,7 @@ function run_stanc(source, model) {
     const hpp_path = cache.file('models', model.id, 'model.hpp')
     fs.writeFile(stan_path, source, (err) => {
       if (err) {
-        reject(new Error(err));
+        reject(err);
       } else {
         const args = [
           stan_path,
@@ -99,9 +103,7 @@ function run_emcc(model, hpp_file) {
     worker_cpp,
     '-o', cache.file('models', model.id, 'model.js'),
   ];
-  return run_process(emcc_exe, args).then((output) => {
-    return output;
-  });
+  return run_process(emcc_exe, args);
 }
 
 function create_dir(...path) {
@@ -113,7 +115,7 @@ function create_dir(...path) {
       else
         fs.mkdir(path, {recursive: true},
         (err) => {
-          if (err) reject(new Error(err));
+          if (err) reject(err);
           else resolve(path);
         });
     });
