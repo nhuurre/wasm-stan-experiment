@@ -6,10 +6,8 @@ async function setup(root_url, elt) {
   elt.text('');
   if (settings.compile)
     compiler(elt, settings);
-  else if (settings.list_models)
-    model_list(elt, settings);
   else
-    elt.text('The server has no models and does not allow compiling new models. :(');
+    model_list(elt, settings);
 }
 
 async function create_connection(root_url) {
@@ -19,8 +17,9 @@ async function create_connection(root_url) {
     settings = await stream.json();
   } catch (err) {
     settings = {
-      list_models: false,
+      model_info: false,
       compile: true,
+      random: false,
       wasm: false,
       fit: true
     };

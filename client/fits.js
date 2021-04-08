@@ -6,7 +6,7 @@ async function create_fit(elt, model, settings) {
   const div = elt.append('div');
   const get_data = data_input(div);
   const get_options = await options(div);
-  const client_fit = div.append('button').text('Fit locally');
+  const client_fit = div.append('button').text('Fit in browser');
   const server_fit = div.append('button').text('Fit on server');
   elt.append('h3').text('Fits');
   const new_item = make_list(elt);
@@ -43,10 +43,11 @@ async function create_fit(elt, model, settings) {
           .onclick = ()=>void item.remove();
       const monitor = task_monitor(item);
       const fitview = await monitor(async() => {
+        const payload = { data: data };
+        if (settings.random)
+          payload.random_seed = options.random_seed;
         const params = await settings.fetch(
-          `${model.name}/params`, 200,
-          { data: data, random_seed: options.random_seed }
-        );
+          `${model.name}/params`, 200, payload);
         const operation = await settings.fetch(
           `${model.name}/fits`, 201, {
           'function': 'stan::services::sample::hmc_nuts_diag_e_adapt',
@@ -80,7 +81,7 @@ async function workertask(elt, model, data, options, settings) {
     const worker = new Worker(new URL(`${model.name}/model.js`, settings.url));
     try {
       return await new Promise((resolve, reject) => {
-      let draws;
+      let draws = undefined;
       worker.onerror = (event) => {
         reject(new Error(event.message));
       };
@@ -93,25 +94,28 @@ async function workertask(elt, model, data, options, settings) {
             random_seed: options.random_seed
           });
           break;
-        case 'params':
-          draws = fit_data(event.data.params, monitor.update);
-          worker.postMessage({
-            cmd: 'hmc_nuts_diag_e_adapt',
-            data: data,
-            args: options
-          });
+        case 'update':
+          draws(event.data.payload);
           break;
-        case 'params-err':
-          reject(new Error(event.data.msg));
+        case 'done':
+          if (draws === undefined) {
+            // get_params task complete
+            draws = fit_data(event.data.payload, monitor.update);
+            worker.postMessage({
+              cmd: 'hmc_nuts_diag_e_adapt',
+              data: data,
+              args: options
+            });
+          } else {
+            // sampling complete
+            resolve(draws.view);
+          }
           break;
-        case 'hmc_nuts-msg':
-          draws(event.data.msg);
-          break;
-        case 'hmc_nuts-done':
-          resolve(draws.view);
+        case 'error':
+          reject(new Error(event.data.payload));
           break;
         case 'debug':
-          console.log(event.data.msg);
+          console.log(event.data.payload);
           break;
         }
       };
@@ -158,56 +162,44 @@ function parse_progress(message) {
   return [val, max];
 }
 
-let stan_protobuf;
-async function get_protobuf_writer() {
-  if (stan_protobuf)
-    return stan_protobuf;
-  const namespace = await protobuf.load(
-    new URL('./callbacks_writer.proto', import.meta.url).pathname);
-  stan_protobuf = namespace.lookupType('stan.WriterMessage');
-  return stan_protobuf;
-}
-
 async function load_fit(fit_name, params, settings) {
   const stream = await fetch(new URL(fit_name, settings.url));
   if (!stream.ok)
     throw new Error(stream.status);
-  const buffer = await stream.arrayBuffer();
-  const decoder = await get_protobuf_writer();
-  const reader = new protobuf.Reader(new Uint8Array(buffer));
+  const buffer = await stream.text();
   const data = fit_data(params);
-  while (reader.pos < reader.len) {
-    const msg = decoder.decodeDelimited(reader);
-    data(msg);
-  }
+  for (let msg of buffer.split('\n'))
+    if (msg)
+      data(JSON.parse(msg));
   return data.view;
 }
 
 function fit_data(params, update) {
   const samples = {};
   const msgs = [];
-  let count_msg = 0;
   function append(msg) {
     switch (msg.topic) {
-    case 1: // LOGGER
-      for (let f of msg.feature)
-        for (let s of f.stringList.value)
-          if (!s.startsWith('Iteration: '))
-            msgs.push(s);
-          else if (update)
-            update(...parse_progress(s));
+    case 'logger':
+      for (let s of msg.values)
+        if (!s.startsWith('info:Iteration: '))
+          msgs.push(s);
+        else if (update)
+          update(...parse_progress(s.slice(5)));
       break;
-    case 2: // INITIALIZE
+    case 'initialization':
       break;
-    case 3: // SAMPLE
-      count_msg += 1;
-      for (let f of msg.feature) if (f.name) {
-        if (!(f.name in samples))
-          samples[f.name] = [];
-        samples[f.name].push(f.doubleList.value[0]);
-      }
+    case 'sample':
+      if (msg.values instanceof Array)
+        for (let s of msg.values)
+          msgs.push(s);
+      else
+        for (let name in msg.values) {
+          if (!(name in samples))
+            samples[name] = [];
+          samples[name].push(msg.values[name]);
+        }
       break;
-    case 4: // DIAGNOSTIC
+    case 'diagnostic':
       break;
     }
   }

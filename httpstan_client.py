@@ -11,7 +11,7 @@ def main():
   routes.setup_routes = setup_routes
   from aiohttp.web import run_app
   from httpstan.app import make_app
-  run_app(make_app(), host='localhost', port=8080)
+  run_app(make_app(), host='localhost', port=8000)
 
 if __name__ == '__main__':
   main()

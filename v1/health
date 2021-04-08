@@ -1,6 +1,7 @@
 {
-  "list_models": true,
+  "model_info": true,
   "compile": false,
+  "random": false,
   "wasm": true,
   "fit": false
 }

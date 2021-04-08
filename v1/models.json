@@ -1,0 +1,13 @@
+{"models":[{
+ "name":"models/0000000000000000",
+ "stanc_warnings":"",
+ "compiler_output":"Template for all compiled models; also functions as a Javascript-only example model for testing without WebAssembly."
+},{
+ "name":"models/4aa60579dc638888",
+ "stanc_warnings":"",
+ "compiler_output":""
+},{
+ "name":"models/6c2d80edf9bb3606",
+ "stanc_warnings":"",
+ "compiler_output":""
+}]}

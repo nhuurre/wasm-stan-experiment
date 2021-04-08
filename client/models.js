@@ -31,22 +31,22 @@ function compiler(elt, settings) {
 
 export
 async function model_list(elt, settings) {
-  const models = await settings.fetch('list-models');
+  const url = settings.model_info ? 'models.json' : 'models';
+  const { models } = await settings.fetch(url);
   if (models.length === 0) {
     elt.append('div').text('No models found.');
     return;
   }
   const new_item = make_list(elt);
   for (let model of models) {
-    if (model.name === "models/e0033a28167e65a1")
+    if (model.name === "models/4aa60579dc638888")
       await binomial_model(new_item(), model, settings)
-    else if (model.name === "models/f735856115d01251")
+    else if (model.name === "models/6c2d80edf9bb3606")
       await linear_model(new_item(), model, settings)
     else
       await modelview(new_item(), model, settings);
   }
 }
-
 
 function sourceview(elt, model_name, settings, source) {
   elt = elt.append('details');
@@ -78,7 +78,8 @@ async function modelview(elt, info, settings, source) {
   const model_name = info.name;
   const compiler_output = info.compiler_output;
   elt.append('h3').text(`Model ${model_name}`);
-  sourceview(elt, model_name, settings, source);
+  if (source || settings.model_info)
+    sourceview(elt, model_name, settings, source);
   create_fit(elt, info, settings);
 }
 

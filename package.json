@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "express": "~4.17.0",
-    "protobufjs": "~6.8.8"
+    "express": "~4.17.0"
   }
 }

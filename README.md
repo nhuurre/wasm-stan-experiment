@@ -1,25 +1,26 @@
 ## Experimental WebAssembly Stan
 
 Stan in your web browser. Consists of two parts:
-- A minimal web frontend for [httpstan](https://github.com/stan-dev/httpstan). Built using [d3.js](https://d3js.org/) and [protobuf.js](https://github.com/protobufjs/protobuf.js).
-- NodeJS-based drop-in replacement for **httpstan**. This is uses [express.js](http://expressjs.com/) and **protobuf.js**.
+- WebStan client. A minimal web frontend for [httpstan](https://github.com/stan-dev/httpstan). Built using [d3.js](https://d3js.org/).
+- NodeStan backend. A drop-in replacement for **httpstan** server. This is uses [express.js](http://expressjs.com/).
 
-The frontend can use plain **httpstan** instead of the new NodeJS server. Start `httpstan-client.py` script and open `http://localhost:8080/client/index.html` in your web browser.
+The frontend works as a static web page; simply start a static web server in this directory, e.g. `python3 -mhttp.server` and open `http//localhost:8000/client/index.html` in your browser. Also available as GitHub Pages [demo](https://nhuurre.github.io/wasm-stan-experiment/client/index.html). The static server is very limited however and cannot compile new models.
+Compiling (without WASM) is enabled when using plain old **httpstan** as the backend. Install **httpstan** and then start `httpstan_client.py` script and (again) open `http://localhost:8000/client/index.html`.
 
-In order to use WebAssembly you need to install [Emscripten](https://emscripten.org/) and [CmdStan](https://github.com/stan-dev/cmdstan).
-Set environment variable `CMDSTAN_PATH` to the CmdStan directory so that `$CMDSTAN_PATH/bin/stanc` is the Stan compiler.
-Once that is done `node --experimental-worker server/main.js` starts the server.
-
-After models have been compiled a static web server also works. I've set up GitHub Pages [to demonstrate](https://nhuurre.github.io/wasm-stan-experiment/client/index.html).
-
-It also possible to use this server as the backend for [pystan-next](https://github.com/stan-dev/pystan-next). Run the tests with
+Of course the real reason you're reading this is compiling new WASM models. To do so you must first install [Emscripten](https://emscripten.org/) and [CmdStan](https://github.com/stan-dev/cmdstan).
+Set the environment variable `CMDSTAN_PATH` to the CmdStan directory so that `$CMDSTAN_PATH/bin/stanc` is the Stan compiler.
+Now you can compile and run a new model from the command line
 ```sh
-cd path/to/pystan-next
-python ../path/to/wasm-stan/pystan-test.py
+node cmdstan.js model.stan data.json
 ```
+The above runs NUTS with default arguments and produces file `output.csv` like CmdStan does.
+The command line interface does not accept any other arguments. For more control start a local NodeStan server with
+```sh
+node server/main.js
+```
+and open the WebStan client `http://localhost:8000/client/index.html` in your browser. From there it is possible to compile models to WASM and run them in either NodeJS on the server side or inside your web browser.
 
-Three **pystan-next** tests fail.
-- `test_model_build_data.py:test_data_wrong_dtype` This tests if converting an integer list to a float list causes the sampler to reject it. However, the values in the list are all still equal to integers and therefore the input is accepted as Javascript makes no intrinsic distinction between integers and floating point numbers. If any of the numbers is changed to a non-integral value the test passes.
-- `test_linear_regression.py` Uses 10000x3 array which is apparently too large and crashes the server. The test passes if the size is 1000x3.
-- `test_httpstan_unused_port.py` This one tests if **httpstan** can start when the default port is not available.
+Finally, [PyStan 3](https://github.com/stan-dev/pystan) interacts with Stan through **httpstan** backend and it is in theory possible to use NodeStan as that backend.
+Import `pystan_test.py` in your interactive Python session and call `monkeypatch_pystan()`.
+Alternatively clone the PyStan repo and simply run `python3 ../wasm-stan/pystan_test.py` in that repo. As a script, it monkeypatches the backend and then runs **pytest** as if you had invoked `python3 -mpytest`. A few tests are skipped, see the code. Also works in the **httpstan** repo. (The skipped tests are chosen based on the name of the current working directory.)
 
