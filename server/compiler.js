@@ -1,5 +1,6 @@
 'use strict';
 
+const { homedir } = require('os');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { join } = require('path');
@@ -10,9 +11,17 @@ const cache = require('./cache.js');
 const stanjslib = join(__dirname, 'stanlib.js');
 const worker_cpp = join(__dirname, 'worker.cpp');
 
-const cmdstan_dir = process.env['CMDSTAN_PATH'];
+const cmdstan_dir = find_cmdstan();
+function find_cmdstan() {
+  let env = process.env['CMDSTAN'];
+  if (env) return env;
+  let root = join(homedir(), '.cmdstan');
+  let found = fs.readdirSync(root).filter((n) => n.startsWith('cmdstan-')).sort().pop();
+  if (found)
+    return join(root, found);
+}
 if (!cmdstan_dir)
-  throw new Error('CmdStan not found -- please set CMDSTAN_PATH environment variable');
+  throw new Error('CmdStan not found -- please set CMDSTAN environment variable');
 
 const stanc_exe = join(cmdstan_dir, 'bin', 'stanc');
 const emcc_exe = 'em++';
@@ -23,20 +32,32 @@ const stan_macros = [
   '-D', 'BOOST_PHOENIX_NO_VARIADIC_EXPRESSION'
 ];
 
-const stan_math = join(cmdstan_dir, 'stan', 'lib', 'stan_math');
-const stan_libs = [
-  '-I', join(__dirname, 'shim'),
-  '-I', join(cmdstan_dir, 'src'),
-  '-I', join(cmdstan_dir, 'lib', 'rapidjson_1.1.0'),
-  '-I', join(cmdstan_dir, 'stan', 'src'),
-  '-I', stan_math,
-  '-I', join(stan_math, 'lib', 'eigen_3.3.9'),
-  '-I', join(stan_math, 'lib', 'boost_1.72.0'),
-  '-I', join(stan_math, 'lib', 'sundials_5.6.1', 'include')
-];
+const stan_libs = find_libs().flatMap((d) => ['-I', d]);
+function find_libs() {
+  const stan_dir = join(cmdstan_dir, 'stan');
+  const stan_math = join(stan_dir, 'lib', 'stan_math');
+  const math_lib = join(stan_math, 'lib');
+  let eigen, boost, sundials;
+  for (let d of fs.readdirSync(math_lib)) {
+    switch (d.split('_')[0]) {
+      case 'eigen': eigen = d; break;
+      case 'boost': boost = d; break;
+      case 'sundials': sundials = d;
+    }
+  }
+  return [
+    join(__dirname, 'shim'),
+    join(stan_dir, 'lib', 'rapidjson_1.1.0'),
+    join(stan_dir, 'src'),
+    stan_math,
+    join(math_lib, eigen),
+    join(math_lib, boost),
+    join(math_lib, sundials, 'include')
+  ];
+}
 
 const version = {
-  server: 'nodejs-stan 0.3'
+  server: 'nodejs-stan 0.4'
 };
 exports.setup = setup;
 async function setup() {
@@ -83,6 +104,7 @@ function run_stanc(source, model_id, model) {
       } else {
         const args = [
           stan_path,
+          `--warn-pedantic`,
           `--o=${hpp_path}`
         ];
         run_process(stanc_exe, args).then(({err}) => {

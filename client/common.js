@@ -25,7 +25,11 @@ function task_monitor(elt) {
     } catch (error) {
       box.classed('stale', false);
       box.classed('hidden', false);
-      box.text(error.message);
+      let message = error.message;
+      try {
+        message = JSON.parse(message.match(/ValueError\((.*)\)/)[1]);
+      } catch (err) {}
+      box.text(message);
       if (!suppress)
         throw error;
     } finally {

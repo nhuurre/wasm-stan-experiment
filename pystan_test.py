@@ -57,12 +57,14 @@ def monkeypatch_pystan():
 
 def httpstan_tests():
     monkeypatch_httpstan()
+    import sys
+    # httpstan.openapi imports additional dependencies we want to avoid
+    sys.modules['httpstan.openapi'] = type(sys)("httpstan.openapi")
     skiplist = [
       'test_function_arguments', # httpstan internal test
       'test_list_model_names',   # ^
       'test_openapi_spec',       # ^
       'test_cvodes', # nodestan does not support ODE solvers
-      'test_delete_', # FIXME somehow pystan breaks when deleting works ?
       'test_bernoulli_unacceptable_arg', # expect good errors for bad queries
       'test_bernoulli_unknown_arg',      # ^
       'test_build_unknown_arg',          # ^
@@ -77,7 +79,6 @@ def pystan_tests():
     skiplist = [
       'test_fit_cache', # nodestan cache is separate from httpstan cache
       'test_nan_inf', # JSON has problems representing INF correctly
-      'test_plugins', # no plugins for nodestan
       ]
     return ['-k', ' and '.join('not ' + t for t in skiplist)]
 

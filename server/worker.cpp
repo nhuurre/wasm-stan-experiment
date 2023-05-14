@@ -3,7 +3,7 @@
 #include <stan/callbacks/interrupt.hpp>
 #include <stan/callbacks/logger.hpp>
 #include <stan/callbacks/writer.hpp>
-#include <cmdstan/io/json/json_data.hpp>
+#include <stan/io/json/json_data.hpp>
 #include <stan/io/empty_var_context.hpp>
 #include <stan/model/log_prob_grad.hpp>
 #include <stan/model/log_prob_propto.hpp>
@@ -143,7 +143,7 @@ void convert_to_json(std::fstream& stream, std::vector<T>& vectr) {
 extern "C" int EMSCRIPTEN_KEEPALIVE get_params(int random_seed) {
   try {
     std::fstream datastream("/data/data.json", std::fstream::in);
-    cmdstan::json::json_data data_context(datastream);
+    stan::json::json_data data_context(datastream);
     datastream.close();
     std::fstream paramstream("/output.json", std::fstream::out);
     stan_model model(data_context, random_seed);
@@ -172,7 +172,7 @@ extern "C" int EMSCRIPTEN_KEEPALIVE get_params(int random_seed) {
 extern "C" int EMSCRIPTEN_KEEPALIVE do_function(int flat_params, int func, bool adjust_transform, bool include_tparams, bool include_gqs, int random_seed) {
   try {
     std::fstream datastream("/data/data.json", std::fstream::in);
-    cmdstan::json::json_data data_context(datastream);
+    stan::json::json_data data_context(datastream);
     datastream.close();
     stan_model model(data_context, random_seed);
     std::vector<int> param_i;
@@ -209,11 +209,11 @@ extern "C" int EMSCRIPTEN_KEEPALIVE do_function(int flat_params, int func, bool 
 extern "C" int EMSCRIPTEN_KEEPALIVE get_transform_inits(int random_seed) {
   try {
     std::fstream datastream("/data/data.json", std::fstream::in);
-    cmdstan::json::json_data data_context(datastream);
+    stan::json::json_data data_context(datastream);
     datastream.close();
     stan_model model(data_context, random_seed);
     std::fstream paramstream("/params.json", std::fstream::in);
-    cmdstan::json::json_data param_context(paramstream);
+    stan::json::json_data param_context(paramstream);
     paramstream.close();
     std::vector<int> param_i;
     std::vector<double> unconstrained;
@@ -247,13 +247,13 @@ extern "C" int EMSCRIPTEN_KEEPALIVE mcmc_sample(
       msg << "Can't open specified file, \"/data/data.json\"" << std::endl;
       throw std::invalid_argument(msg.str());
     }
-    cmdstan::json::json_data data_context(stream);
+    stan::json::json_data data_context(stream);
     stream.close();
 
     stan::model::model_base& model = new_model(data_context, random_seed, &std::cout);
 
     std::fstream pstream("/params.json", std::fstream::in);
-    cmdstan::json::json_data init_context(pstream);
+    stan::json::json_data init_context(pstream);
     pstream.close();
 
     int return_code = 1;

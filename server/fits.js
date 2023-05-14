@@ -229,7 +229,8 @@ async function run_sampler(model, fit, data, options, operation) {
     }
   }).catch((err) => err);
   if (err) {
-    operation.result = { code: 400, message: err.message };
+    let context = buffer.slice(0,4).map((m) => JSON.parse(m).values[0].replace("info:", "").trim());
+    operation.result = { code: 400, message: [err.message, ...context].join(' ') };
     operation.done = true;
   } else {
     fs.writeFile(cache.file(fit.fit_file), buffer.join(''), (err) => {

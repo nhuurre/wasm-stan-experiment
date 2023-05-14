@@ -38,7 +38,7 @@ function send_error(response, status, msg) {
   response.json({
     code: status,
     //status: phrase
-    message: msg
+    message: `ValueError(${JSON.stringify(msg)})`
   });
 }
 
@@ -63,11 +63,9 @@ async function handle_compile_model(request, response) {
   }
 }
 
-const pystan_hack = true;
-
 async function handle_delete_model(request, response) {
   const model_id = request.params[0];
-  if (pystan_hack || cache.delete_model(model_id)) {
+  if (await cache.delete_model(model_id)) {
     response.send('OK')
   } else {
     send_error(response, 404, `Model models/${model_id} not found.`);
@@ -205,7 +203,7 @@ function handle_get_fit(request, response) {
 function handle_delete_fit(request, response) {
   const model_id = request.params[0];
   const fit_id = request.params[1];
-  if (pystan_hack || cache.delete_fit(fit_id)) {
+  if (cache.delete_fit(fit_id)) {
     response.send('OK')
   } else {
     send_error(response, 404,
@@ -265,19 +263,19 @@ async function install(app) {
   app.get('/v1/models.json', handle_list_models);
   if (server_settings.compile)
     app.post('/v1/models', express.json(), express.urlencoded({extended: true}), handle_compile_model);
-  app.delete(/\/v1\/models\/([0-9a-f]+)/, handle_delete_model);
+  app.delete(/\/v1\/models\/([0-9a-f]+)$/, handle_delete_model);
   if (server_settings.fit) {
-    app.post(/\/v1\/models\/([0-9a-f]+)\/params/, express.json({limit: '1Mb'}), express.urlencoded({extended: true, limit: '1Mb'}), handle_params);
-    app.post(/\/v1\/models\/([0-9a-f]+)\/fits/, express.json({limit: '1Mb'}), express.urlencoded({extended: true, limit: '1Mb'}), handle_create_fit);
-    app.post(/\/v1\/models\/([0-9a-f]+)\/log_prob_grad/, express.json(), express.urlencoded({extended: true}), handle_log_prob_grad);
-    app.post(/\/v1\/models\/([0-9a-f]+)\/log_prob/, express.json(), express.urlencoded({extended: true}), handle_log_prob);
-    app.post(/\/v1\/models\/([0-9a-f]+)\/write_array/, express.json(), express.urlencoded({extended: true}), handle_write_array);
-    app.post(/\/v1\/models\/([0-9a-f]+)\/transform_inits/, express.json(), express.urlencoded({extended: true}), handle_transform_inits);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/params$/, express.json({limit: '1Mb'}), express.urlencoded({extended: true, limit: '1Mb'}), handle_params);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/fits$/, express.json({limit: '1Mb'}), express.urlencoded({extended: true, limit: '1Mb'}), handle_create_fit);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/log_prob_grad$/, express.json(), express.urlencoded({extended: true}), handle_log_prob_grad);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/log_prob$/, express.json(), express.urlencoded({extended: true}), handle_log_prob);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/write_array$/, express.json(), express.urlencoded({extended: true}), handle_write_array);
+    app.post(/\/v1\/models\/([0-9a-f]+)\/transform_inits$/, express.json(), express.urlencoded({extended: true}), handle_transform_inits);
   }
-  app.get(/\/v1\/models\/([0-9a-f]+)\/fits\/([0-9a-f]+)/, handle_get_fit);
-  app.delete(/\/v1\/models\/([0-9a-f]+)\/fits\/([0-9a-f]+)/, handle_delete_fit);
-  app.get(/\/v1\/operations\/([0-9a-f]+)/, handle_operation);
+  app.get(/\/v1\/models\/([0-9a-f]+)\/fits\/([0-9a-f]+)$/, handle_get_fit);
+  app.delete(/\/v1\/models\/([0-9a-f]+)\/fits\/([0-9a-f]+)$/, handle_delete_fit);
+  app.get(/\/v1\/operations\/([0-9a-f]+)$/, handle_operation);
   if (server_settings.wasm)
-    app.get(/\/v1\/models\/([0-9a-f]+)\/model\.(stan|js|wasm)/, handle_model_info);
+    app.get(/\/v1\/models\/([0-9a-f]+)\/model\.(stan|js|wasm)$/, handle_model_info);
 
 }
